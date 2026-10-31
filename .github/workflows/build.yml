@@ -6,23 +6,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Add the skip feature
+
+      - name: Add my changes
         run: |
           if [ ! -f skip-song-changed-files.zip ]; then
             echo "Upload skip-song-changed-files.zip to your repo first"
             exit 1
           fi
           unzip -o skip-song-changed-files.zip
+
+      - name: Give the app its own identity
+        run: |
+          F=$(ls app/build.gradle.kts app/build.gradle 2>/dev/null | head -1)
+          echo "Editing $F"
+          sed -i -E 's/applicationId[[:space:]]*=?[[:space:]]*"[^"]*"/applicationId = "uk.co.powerhitradio.player"/' "$F"
+          grep -n "applicationId" "$F"
+          grep -q 'uk.co.powerhitradio.player' "$F" || { echo "Could not set the app ID"; exit 1; }
+          find app/src/main/res -name strings.xml -exec sed -i -E 's#(<string name="app_name"[^>]*>)[^<]*(</string>)#\1Power Hit Radio\2#' {} +
+          grep -rn 'name="app_name"' app/src/main/res || true
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
+
       - uses: gradle/actions/setup-gradle@v4
+
       - name: Build
         run: |
           chmod +x ./gradlew
           ./gradlew assembleDebug
+
       - uses: actions/upload-artifact@v4
         with:
-          name: azuracast-app-with-skip
+          name: power-hit-radio-app
           path: app/build/outputs/apk/debug/*.apk
